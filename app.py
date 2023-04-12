@@ -108,6 +108,21 @@ def logout():
 @login_required
 def quote():
     """Get stock quote."""
+    #   When user submits the form
+    if request.method == "POST":
+        #   Store the symbol in a variable
+        symbol = request.form.get("symbol")
+        #   Make sure that the symbol is not null
+        if not symbol:
+            return apology("You have to provide a symbol", 400)
+        
+        data = lookup(symbol)
+        #   If all is well, render the quoted template
+        return render_template("quoted.html", data=data)
+    #   If user got here via get render the quote template
+    if request.method == "GET":
+        return render_template("quote.html")
+        
     return apology("TODO")
 
 
