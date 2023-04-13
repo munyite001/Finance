@@ -46,8 +46,33 @@ def index():
 @app.route("/buy", methods=["GET", "POST"])
 @login_required
 def buy():
-    """Buy shares of stock"""
+    """ Buy shares of stock """
+    """Get stock quote."""
+    #   When user submits the form
+    if request.method == "POST":
+        #   Store the symbol and shares in variables
+        symbol = request.form.get("symbol")
+        shares = request.form.get("shares")
+        #   Make sure that the symbol and shares are not  null
+        if not symbol and not shares:
+            return apology("Invalid Input", 400)
+        
+        data = lookup(symbol)
+        if data == None:
+            return apology("Invalid symbol", 403)
+        
+        price_per_share = data.price
+        total_price = shares * price_per_share
+        user_balance = db.execute("SELECT cash FROM users WHERE id = ?", session["user_id"])
+        print(user_balance)
+        #   If all is well, render the quoted template
+        return render_template("quoted.html", data=data)
+    #   If user got here via get render the quote template
+    if request.method == "GET":
+        return render_template("buy.html")
+        
     return apology("TODO")
+
 
 
 @app.route("/history")
@@ -117,6 +142,8 @@ def quote():
             return apology("You have to provide a symbol", 400)
         
         data = lookup(symbol)
+        if data == None:
+            return apology("Invalid symbol", 403)
         #   If all is well, render the quoted template
         return render_template("quoted.html", data=data)
     #   If user got here via get render the quote template
