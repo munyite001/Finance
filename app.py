@@ -52,7 +52,7 @@ def buy():
     if request.method == "POST":
         #   Store the symbol and shares in variables
         symbol = request.form.get("symbol")
-        shares = request.form.get("shares")
+        shares = int(request.form.get("shares"))
         #   Make sure that the symbol and shares are not  null
         if not symbol and not shares:
             return apology("Invalid Input", 400)
@@ -61,17 +61,35 @@ def buy():
         if data == None:
             return apology("Invalid symbol", 403)
         
-        price_per_share = data.price
+        price_per_share = data['price']
         total_price = shares * price_per_share
-        user_balance = db.execute("SELECT cash FROM users WHERE id = ?", session["user_id"])
-        print(user_balance)
-        #   If all is well, render the quoted template
-        return render_template("quoted.html", data=data)
+        
+        user_balance = db.execute("SELECT cash FROM users WHERE id = ?", session["user_id"])[0]['cash']
+        
+        
+        #   Check if user has the funds
+        if user_balance < total_price:
+            return apology("Insufficient Funds", 403)
+        
+        #   If user has the appropriate funds, make the purchase
+        user_balance -= total_price
+
+        #   update users table to deduct cash
+        db.execute("UPDATE users SET cash = ? WHERE id = ?", user_balance, session["user_id"])
+        #   Update the purchases table
+        if len(db.execute("SELECT * FROM purchases WHERE id = ? AND symbol = ?", session["user_id"], symbol)) == 0:
+            db.execute("INSERT INTO purchases (id, symbol, name, shares, price, total) VALUES (?, ?, ?, ?, ?, ?)", session["user_id"], symbol, data["name"], shares, price_per_share, total_price)
+            
+        elif len(db.execute("SELECT * FROM purchases WHERE id = ? AND symbol = ?", session["user_id"], symbol)) == 1:
+            db.execute("UPDATE purchases SET shares = shares + ?, price = ?, total = total + ?", shares, price_per_share, total_price)
+        
+        #   Update the history table
+        db.execute("INSERT INTO history (id, symbol, shares, price, transacted) VALUES(?, ?, ?, ?, datetime('now'))", session["user_id"], symbol, shares, price_per_share)
+        return redirect("/")
+    
     #   If user got here via get render the quote template
     if request.method == "GET":
         return render_template("buy.html")
-        
-    return apology("TODO")
 
 
 
