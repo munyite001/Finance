@@ -63,20 +63,22 @@ def buy():
     if request.method == "POST":
         #   Store the symbol and shares in variables
         symbol = request.form.get("symbol")
-        shares = int(request.form.get("shares"))
-        #   Make sure that the symbol and shares are not  null
-        if not symbol and not shares:
+        try:
+            shares = int(request.form.get("shares"))
+        except ValueError:
             return apology("Invalid Input", 400)
-        
+        #   Make sure that the symbol and shares are not  null
+        if not symbol or not shares or shares < 0:
+            return apology("Invalid Input", 400)
+
         data = lookup(symbol)
         if data == None:
-            return apology("Invalid symbol", 403)
+            return apology("Invalid symbol", 400)
         
         price_per_share = data['price']
         total_price = shares * price_per_share
         
         user_balance = db.execute("SELECT cash FROM users WHERE id = ?", session["user_id"])[0]['cash']
-        
         
         #   Check if user has the funds
         if user_balance < total_price:
@@ -89,19 +91,21 @@ def buy():
         db.execute("UPDATE users SET cash = ? WHERE id = ?", user_balance, session["user_id"])
         #   Update the purchases table
         if len(db.execute("SELECT * FROM purchases WHERE id = ? AND symbol = ?", session["user_id"], symbol)) == 0:
-            db.execute("INSERT INTO purchases (id, symbol, name, shares, price, total) VALUES (?, ?, ?, ?, ?, ?)", session["user_id"], symbol, data["name"], shares, price_per_share, total_price)
+            db.execute("INSERT INTO purchases (id, symbol, name, shares, price, total) VALUES (?, ?, ?, ?, ?, ?)", 
+                       session["user_id"], symbol, data["name"], shares, price_per_share, total_price)
             
         elif len(db.execute("SELECT * FROM purchases WHERE id = ? AND symbol = ?", session["user_id"], symbol)) == 1:
-            db.execute("UPDATE purchases SET shares = shares + ?, price = ?, total = total + ? WHERE symbol = ? AND id = ?", shares, price_per_share, total_price, symbol, session["user_id"])
+            db.execute("UPDATE purchases SET shares = shares + ?, price = ?, total = total + ? WHERE symbol = ? AND id = ?", 
+                       shares, price_per_share, total_price, symbol, session["user_id"])
         
         #   Update the history table
-        db.execute("INSERT INTO history (id, symbol, shares, price, transacted) VALUES(?, ?, ?, ?, datetime('now'))", session["user_id"], symbol, shares, price_per_share)
+        db.execute("INSERT INTO history (id, symbol, shares, price, transacted) VALUES(?, ?, ?, ?, datetime('now'))", 
+                   session["user_id"], symbol, shares, price_per_share)
         return redirect("/")
     
     #   If user got here via get render the quote template
     if request.method == "GET":
         return render_template("buy.html")
-
 
 
 @app.route("/history")
@@ -112,7 +116,6 @@ def history():
     headings = list(history[0].keys())[1:]
     return render_template("history.html", history=history, headings=headings)
     
-
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
@@ -175,7 +178,7 @@ def quote():
         
         data = lookup(symbol)
         if data == None:
-            return apology("Invalid symbol", 403)
+            return apology("Invalid symbol", 400)
         #   If all is well, render the quoted template
         return render_template("quoted.html", data=data)
     #   If user got here via get render the quote template
@@ -197,16 +200,16 @@ def register():
         users = [user['username'] for user in db.execute("SELECT username FROM users")]
     # Ensure username was submitted
         if not username:
-            return apology("Enter a valid username", 403)
+            return apology("Enter a valid username", 400)
         elif username in users:
             print("Username in users")
-            return apology("The username has already been taken", 403)
+            return apology("The username has already been taken", 400)
         # Ensure password was submitted
         elif not password:
-            return apology("must provide password", 403)
+            return apology("must provide password", 400)
         #   Ensure that password matches
         elif password != confirmation:
-            return apology("passwords do not match", 403)
+            return apology("passwords do not match", 400)
 
         #   If everything is okay
 
@@ -242,7 +245,7 @@ def sell():
         stock = db.execute("SELECT * FROM purchases WHERE  id = ? and symbol = ?", session["user_id"], symbol)[0]
         user_shares = stock["shares"]
         if user_shares < shares:
-            return apology("Insufficient Shares", 403)
+            return apology("Insufficient Shares", 400)
         else:
             current_price = lookup(stock["symbol"])["price"]
             cash = current_price * shares
@@ -254,7 +257,8 @@ def sell():
             db.execute("UPDATE purchases SET shares = shares - ? WHERE symbol = ? AND id = ?", shares, symbol, session["user_id"])
             
             #   Update history table
-            db.execute("INSERT INTO history (id, symbol, shares, price, transacted) VALUES(?, ?, ?, ?, datetime('now'))", session["user_id"], symbol, -shares, current_price)
+            db.execute("INSERT INTO history (id, symbol, shares, price, transacted) VALUES(?, ?, ?, ?, datetime('now'))", 
+                       session["user_id"], symbol, -shares, current_price)
             
             #   Check if you sold all shares of that stock and update the purchases accordingly
             if user_shares - shares == 0:

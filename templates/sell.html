@@ -6,12 +6,12 @@ Sell
 
 {%  block main  %}
 <form action="/sell" method="POST">
-    <select name="symbol">
+    <select name="symbol" class="sell">
         <option value="Symbol" disabled selected>Symbol</option>
     
         {%  for symbol in symbols   %}
     
-            <option value="{{ symbol }}">{{ symbol }}</option>
+            <option value="{{ symbol }}">{{ symbol.upper() }}</option>
     
         {%  endfor  %}
     
