@@ -50,7 +50,7 @@ def index():
 
     user_balance = db.execute("SELECT cash FROM users WHERE id = ?", session["user_id"])[0]['cash']
     totalBalance += user_balance
-    headings = list(data[0].keys())[1:]
+    headings = ["symbol", "name", "shares", "price", "total"]
     return render_template("index.html", data=data, headings=headings, total=totalBalance, user_balance=user_balance)
 
 
@@ -92,7 +92,7 @@ def buy():
             db.execute("INSERT INTO purchases (id, symbol, name, shares, price, total) VALUES (?, ?, ?, ?, ?, ?)", session["user_id"], symbol, data["name"], shares, price_per_share, total_price)
             
         elif len(db.execute("SELECT * FROM purchases WHERE id = ? AND symbol = ?", session["user_id"], symbol)) == 1:
-            db.execute("UPDATE purchases SET shares = shares + ?, price = ?, total = total + ?", shares, price_per_share, total_price)
+            db.execute("UPDATE purchases SET shares = shares + ?, price = ?, total = total + ? WHERE symbol = ? AND id = ?", shares, price_per_share, total_price, symbol, session["user_id"])
         
         #   Update the history table
         db.execute("INSERT INTO history (id, symbol, shares, price, transacted) VALUES(?, ?, ?, ?, datetime('now'))", session["user_id"], symbol, shares, price_per_share)
@@ -108,6 +108,9 @@ def buy():
 @login_required
 def history():
     """Show history of transactions"""
+    history = db.execute("SELECT * FROM history WHERE id = ?", session["user_id"])
+    headings = list(history[0].keys())[1:]
+    return render_template("history.html", history=history, headings=headings)
     
 
 
@@ -220,5 +223,46 @@ def register():
 @app.route("/sell", methods=["GET", "POST"])
 @login_required
 def sell():
-    """Sell shares of stock"""
-    return apology("TODO")
+    """Sell shares of stock""" 
+    user_stocks = db.execute("SELECT * FROM purchases WHERE id = ?", session["user_id"])
+        
+    symbols = [stock["symbol"] for stock in user_stocks]
+
+    #   If method is POST
+    if request.method == "POST":
+        symbol = request.form.get("symbol")
+        shares = int(request.form.get("shares"))
+
+        #   Ensure that the user has selected a value
+        if symbol == "Symbol" or not shares:
+            return apology("Invalid Input", 400)
+        
+        #   Check that the user, has the specified shares before selling
+    
+        stock = db.execute("SELECT * FROM purchases WHERE  id = ? and symbol = ?", session["user_id"], symbol)[0]
+        user_shares = stock["shares"]
+        if user_shares < shares:
+            return apology("Insufficient Shares", 403)
+        else:
+            current_price = lookup(stock["symbol"])["price"]
+            cash = current_price * shares
+
+            #   Update user cash in db
+            db.execute("UPDATE users SET cash = cash + ? WHERE id = ?", cash, session["user_id"])
+            
+            #   Update purchases table to deduct share
+            db.execute("UPDATE purchases SET shares = shares - ? WHERE symbol = ? AND id = ?", shares, symbol, session["user_id"])
+            
+            #   Update history table
+            db.execute("INSERT INTO history (id, symbol, shares, price, transacted) VALUES(?, ?, ?, ?, datetime('now'))", session["user_id"], symbol, -shares, current_price)
+            
+            #   Check if you sold all shares of that stock and update the purchases accordingly
+            if user_shares - shares == 0:
+                db.execute("DELETE FROM purchases WHERE symbol = ? AND id = ?", symbol, session["user_id"])
+
+            #   Redirect user to home
+            return redirect("/")
+        
+        #   If the request was GET
+    return render_template("sell.html", symbols=symbols)
+        
