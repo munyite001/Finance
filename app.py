@@ -40,7 +40,18 @@ def after_request(response):
 @login_required
 def index():
     """Show portfolio of stocks"""
-    return apology("TODO")
+    data = db.execute("SELECT * FROM purchases WHERE id = ?", session["user_id"])
+    totalBalance = 0
+    for stock in data:
+        stock_details = lookup(stock["symbol"])
+        stock["price"] = stock_details["price"]
+        stock["total"] = stock["price"] * stock["shares"]
+        totalBalance += stock["total"]
+
+    user_balance = db.execute("SELECT cash FROM users WHERE id = ?", session["user_id"])[0]['cash']
+    totalBalance += user_balance
+    headings = list(data[0].keys())[1:]
+    return render_template("index.html", data=data, headings=headings, total=totalBalance, user_balance=user_balance)
 
 
 @app.route("/buy", methods=["GET", "POST"])
@@ -97,7 +108,7 @@ def buy():
 @login_required
 def history():
     """Show history of transactions"""
-    return apology("TODO")
+    
 
 
 @app.route("/login", methods=["GET", "POST"])

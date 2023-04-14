@@ -21,3 +21,53 @@ nav .navbar-brand .green
 {
     color: #2e944b;
 }
+
+table {
+    margin: 0 auto;
+    width: 90%;
+}
+
+table thead td {
+    text-transform: capitalize;
+    font-size: 18px;
+    font-weight: 900;
+}
+
+table tbody tr {
+    height: 3rem;
+}
+
+table tbody tr:nth-child(1)
+{
+    background-color: #eceff4;
+}
+
+table tbody .sym {
+    text-transform: uppercase;
+}
+
+table tr {
+    width: 100%;
+    border-bottom: 1px solid #e1e5eb;
+}
+
+.cash {
+    width: 80%;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    justify-content: end;
+    align-items: end;
+}
+
+.cash div {
+    width: 30%;
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem 1rem;
+}
+
+.cash div p:nth-child(1) {
+    font-size: 20px;
+    font-weight: 800;
+}
