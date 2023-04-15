@@ -2,6 +2,8 @@
 ## Introduction
 This Flask app is a simple finance application that allows users to buy and sell stocks using the IEX API. The app allows users to register, login, and check their portfolio balance, transaction history, and buy and sell shares of stocks. The app uses the cs50 module to interact with an SQLite database to store user information and transactions.
 
+
+ - [Live website]()
 ## Installation
 Clone the repository
 Clone the repository using the following command:
